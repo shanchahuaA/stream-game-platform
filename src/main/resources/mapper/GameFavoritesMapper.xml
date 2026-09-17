@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.stream.mapper.UserFavoritesMapper">
+    <!-- 结果映射：收藏记录 + 关联游戏Games -->
+    <resultMap id="FavoriteWithGameResultMap" type="com.stream.pojo.UserFavorites">
+    <!-- user_favorites表字段 -->
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="game_id" property="gameId"/>
+    <result column="created_at" property="createdAt"/>
+        <!-- 一对一关联Games实体 -->
+        <association property="games" javaType="com.stream.pojo.Games">
+            <id column="g_id" property="id"/>
+            <result column="platform" property="platform"/>
+            <result column="platform_game_id" property="platformGameId"/>
+            <result column="gname" property="gname"/>
+            <result column="cover_url" property="coverUrl"/>
+            <result column="shop_url" property="shopUrl"/>
+            <result column="original_price" property="originalPrice"/>
+            <result column="final_price" property="finalPrice"/>
+            <result column="discount_percent" property="discountPercent"/>
+            <result column="top_seller_rank" property="topSellerRank"/>
+            <result column="discount_rank" property="discountRank"/>
+            <result column="last_sync_time" property="lastSyncTime"/>
+            <result column="review_count" property="reviewCount"/>
+            <result column="positive_rate" property="positiveRate"/>
+            <result column="review_tier" property="reviewTier"/>
+        </association>
+    </resultMap>
+
+    <!-- 根据用户userId 查询该用户所有收藏，联查对应游戏全部信息 -->
+    <select id="listMyFavoriteByUserId" resultMap="FavoriteWithGameResultMap">
+        select
+            f.id,
+            f.user_id,
+            f.game_id,
+            f.created_at,
+            g.id as g_id,
+            g.platform,
+            g.platform_game_id,
+            g.gname,
+            g.cover_url,
+            g.shop_url,
+            g.original_price,
+            g.final_price,
+            g.discount_percent,
+            g.top_seller_rank,
+            g.discount_rank,
+            g.last_sync_time,
+            g.review_count,
+            g.positive_rate,
+            g.review_tier
+        from user_favorites f
+                 left join games g on f.game_id = g.id
+        where f.user_id = #{userId}
+        order by f.created_at desc
+    </select>
+
+
+    <!-- 新增收藏，自增id -->
+    <insert id="insertFavorite" >
+        insert into user_favorites(user_id, game_id)
+        values(#{userId}, #{gameId})
+    </insert>
+
+    <!-- 根据收藏id删除收藏 -->
+    <delete id="deleteFavoriteById">
+        delete from user_favorites where id = #{id}
+    </delete>
+
+    <!-- 判断用户是否已收藏该游戏，返回数量 -->
+    <select id="countFavoriteByUserGame" resultType="Integer">
+        select COUNT(*) from user_favorites
+        where user_id = #{userId} and game_id = #{gameId}
+    </select>
+
+</mapper>

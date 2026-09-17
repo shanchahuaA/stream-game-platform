@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.stream.mapper.UserMapper">
+    <!--单个查找（登录用，查username和pwd） -->
+    <select id="getUserByNameAndPwd" resultType="com.stream.pojo.User">
+        select * from `user`
+        where username=#{username} and password=#{password}
+    </select>
+    <!--全部查找（管理员页面显示用，查所有用户）,包括调整order，其中sortType参数类型根据按按钮类型可以设定，到时候前端根据这个sql来写！！ -->
+    <select id="getUserAll" resultType="com.stream.pojo.User">
+        SELECT * FROM `user`
+        ORDER BY
+        <choose>
+            <!-- 按id正序（id小的用户在前） -->
+            <when test="sortType == 'id'">
+                id asc
+            </when>
+            <!-- 按状态排序：1启用在前，0禁用在后 -->
+            <when test="sortType == 'status'">
+                status desc , id desc
+            </when>
+            <!-- 按昵称拼音升序 -->
+            <when test="sortType == 'nickname'">
+                nickname asc
+            </when>
+            <!-- 默认：id asc -->
+            <otherwise>
+                id asc
+            </otherwise>
+        </choose>
+    </select>
+    <!-- 根据id查找-->
+    <select id="selectUserById" resultType="com.stream.pojo.User">
+        select * from `user` where id=#{id}
+    </select>
+    <!-- 根据nickname 查找,若不传nickname则为查询全部^v^-->
+    <select id="selectUserByNick" resultType="com.stream.pojo.User">
+        select * from `user`
+        <where>
+            <if test="nickname!=null and nickname!='' ">
+                and nickname like concat('%',#{nickname},'%')
+            </if>
+        </where>
+    </select>
+    <!--三个参数都必须要传，用于用户注册和管理员添加用户-->
+    <insert id="insertUser" >
+        insert into `user`(username,password,nickname)
+        values(#{username},#{password},#{nickname})
+    </insert>
+    <!--更新用户，动态sql-->
+    <update id="updateUser">
+        update `user`
+        <set>
+            <if test="username !=null and username!=''">
+                username=#{username},
+            </if>
+            <if test="password !=null and password!=''">
+                password=#{password},
+            </if>
+            <if test="nickname!=null">
+                nickname=#{nickname},
+            </if>
+            <if test="avatar!=null">
+                avatar=#{avatar},
+            </if>
+            <if test="status!=null">
+                status=#{status},
+            </if>
+        </set>
+            where id=#{id}
+    </update>
+    <delete id="deleteUser">
+        delete from `user`
+        where id=#{id}
+    </delete>
+</mapper>

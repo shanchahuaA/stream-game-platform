@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.stream.mapper.GamesMapper">
+
+    <!-- 增：插入游戏（仅 gname, shop_url, platform_game_id 必填，其余有默认值） -->
+    <insert id="insertGame" parameterType="com.stream.pojo.Games">
+        INSERT INTO games
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            platform_game_id, gname, shop_url,
+            <if test="game.platform != null">platform,</if>
+            <if test="game.coverUrl != null">cover_url,</if>
+            <if test="game.originalPrice != null">original_price,</if>
+            <if test="game.finalPrice != null">final_price,</if>
+            <if test="game.discountPercent != null">discount_percent,</if>
+            <if test="game.topSellerRank != null">top_seller_rank,</if>
+            <if test="game.discountRank != null">discount_rank,</if>
+            <if test="game.lastSyncTime != null">last_sync_time,</if>
+            <if test="game.reviewCount != null">review_count,</if>
+            <if test="game.positiveRate != null">positive_rate,</if>
+            <if test="game.reviewTier != null">review_tier,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            #{game.platformGameId}, #{game.gname}, #{game.shopUrl},
+            <if test="game.platform != null">#{game.platform},</if>
+            <if test="game.coverUrl != null">#{game.coverUrl},</if>
+            <if test="game.originalPrice != null">#{game.originalPrice},</if>
+            <if test="game.finalPrice != null">#{game.finalPrice},</if>
+            <if test="game.discountPercent != null">#{game.discountPercent},</if>
+            <if test="game.topSellerRank != null">#{game.topSellerRank},</if>
+            <if test="game.discountRank != null">#{game.discountRank},</if>
+            <if test="game.lastSyncTime != null">#{game.lastSyncTime},</if>
+            <if test="game.reviewCount != null">#{game.reviewCount},</if>
+            <if test="game.positiveRate != null">#{game.positiveRate},</if>
+            <if test="game.reviewTier != null">#{game.reviewTier},</if>
+        </trim>
+        ON DUPLICATE KEY UPDATE
+        <trim suffixOverrides=",">
+            <if test="game.gname != null">gname = VALUES(gname),</if>
+            <if test="game.coverUrl != null">cover_url = VALUES(cover_url),</if>
+            <if test="game.shopUrl != null">shop_url = VALUES(shop_url),</if>
+            <if test="game.originalPrice != null">original_price = VALUES(original_price),</if>
+            <if test="game.finalPrice != null">final_price = VALUES(final_price),</if>
+            <if test="game.discountPercent != null">discount_percent = VALUES(discount_percent),</if>
+            <if test="game.topSellerRank != null">top_seller_rank = VALUES(top_seller_rank),</if>
+            <if test="game.discountRank != null">discount_rank = VALUES(discount_rank),</if>
+            <if test="game.reviewCount != null">review_count = VALUES(review_count),</if>
+            <if test="game.positiveRate != null">positive_rate = VALUES(positive_rate),</if>
+            <if test="game.reviewTier != null">review_tier = VALUES(review_tier),</if>
+        </trim>
+    </insert>
+
+    <!-- 删：根据 ID 删除游戏 -->
+    <delete id="deleteById" parameterType="java.lang.Integer">
+        DELETE FROM games WHERE id = #{id}
+    </delete>
+
+    <!-- 改：更新游戏信息 -->
+    <update id="updateGame" parameterType="com.stream.pojo.Games">
+        UPDATE games
+        <set>
+            <if test="game.platform != null">platform = #{game.platform},</if>
+            <if test="game.platformGameId != null">platform_game_id = #{game.platformGameId},</if>
+            <if test="game.gname != null">gname = #{game.gname},</if>
+            <if test="game.coverUrl != null">cover_url = #{game.coverUrl},</if>
+            <if test="game.shopUrl != null">shop_url = #{game.shopUrl},</if>
+            <if test="game.originalPrice != null">original_price = #{game.originalPrice},</if>
+            <if test="game.finalPrice != null">final_price = #{game.finalPrice},</if>
+            <if test="game.discountPercent != null">discount_percent = #{game.discountPercent},</if>
+            <if test="game.topSellerRank != null">top_seller_rank = #{game.topSellerRank},</if>
+            <if test="game.discountRank != null">discount_rank = #{game.discountRank},</if>
+            <if test="game.lastSyncTime != null">last_sync_time = #{game.lastSyncTime},</if>
+            <if test="game.reviewCount != null">review_count = #{game.reviewCount},</if>
+            <if test="game.positiveRate != null">positive_rate = #{game.positiveRate},</if>
+            <if test="game.reviewTier != null">review_tier = #{game.reviewTier},</if>
+        </set>
+        WHERE id = #{game.id}
+    </update>
+
+    <!-- 查：根据 ID 查询单个游戏 -->
+    <select id="selectById" parameterType="java.lang.Integer" resultType="com.stream.pojo.Games">
+        SELECT id, platform, platform_game_id AS platformGameId, gname, cover_url AS coverUrl,
+               shop_url AS shopUrl, original_price AS originalPrice, final_price AS finalPrice,
+               discount_percent AS discountPercent, top_seller_rank AS topSellerRank,
+               discount_rank AS discountRank, last_sync_time AS lastSyncTime,
+               review_count AS reviewCount, positive_rate AS positiveRate, review_tier AS reviewTier
+        FROM games
+        WHERE id = #{id}
+    </select>
+
+    <!-- 查：查询所有游戏 -->
+    <select id="selectAll" resultType="com.stream.pojo.Games">
+        SELECT id, platform, platform_game_id AS platformGameId, gname, cover_url AS coverUrl,
+               shop_url AS shopUrl, original_price AS originalPrice, final_price AS finalPrice,
+               discount_percent AS discountPercent, top_seller_rank AS topSellerRank,
+               discount_rank AS discountRank, last_sync_time AS lastSyncTime,
+               review_count AS reviewCount, positive_rate AS positiveRate, review_tier AS reviewTier
+        FROM games
+
+    </select>
+
+    <!-- 查：分页查询（配合 PageHelper 使用） -->
+    <select id="selectByPage" resultType="com.stream.pojo.Games">
+        SELECT id, platform, platform_game_id AS platformGameId, gname, cover_url AS coverUrl,
+               shop_url AS shopUrl, original_price AS originalPrice, final_price AS finalPrice,
+               discount_percent AS discountPercent, top_seller_rank AS topSellerRank,
+               discount_rank AS discountRank, last_sync_time AS lastSyncTime,
+               review_count AS reviewCount, positive_rate AS positiveRate, review_tier AS reviewTier
+        FROM games
+        ORDER BY id ASC
+    </select>
+
+    <!-- 查：查询全部 - 按 top_seller_rank 升序，rank=0 按 review_count 降序 -->
+    <select id="selectAllByTopSeller" resultType="com.stream.pojo.Games">
+        SELECT id, platform, platform_game_id AS platformGameId, gname, cover_url AS coverUrl,
+               shop_url AS shopUrl, original_price AS originalPrice, final_price AS finalPrice,
+               discount_percent AS discountPercent, top_seller_rank AS topSellerRank,
+               discount_rank AS discountRank, last_sync_time AS lastSyncTime,
+               review_count AS reviewCount, positive_rate AS positiveRate, review_tier AS reviewTier
+        FROM games
+        ORDER BY
+            CASE WHEN top_seller_rank = 0 THEN 1 ELSE 0 END ASC,
+            top_seller_rank ASC,
+            review_count DESC
+    </select>
+
+    <!-- 查：查询全部 - 按 discount_rank 升序，rank=0 按 review_count 降序 -->
+    <select id="selectAllByDiscount" resultType="com.stream.pojo.Games">
+        SELECT id, platform, platform_game_id AS platformGameId, gname, cover_url AS coverUrl,
+               shop_url AS shopUrl, original_price AS originalPrice, final_price AS finalPrice,
+               discount_percent AS discountPercent, top_seller_rank AS topSellerRank,
+               discount_rank AS discountRank, last_sync_time AS lastSyncTime,
+               review_count AS reviewCount, positive_rate AS positiveRate, review_tier AS reviewTier
+        FROM games
+        ORDER BY
+            CASE WHEN discount_rank = 0 THEN 1 ELSE 0 END ASC,
+            discount_rank ASC,
+            review_count DESC
+    </select>
+
+    <!-- 搜：按游戏名模糊查询 - 按 top_seller_rank 升序，rank=0 按 review_count 降序 -->
+    <select id="searchByGnameByTopSeller" parameterType="java.lang.String" resultType="com.stream.pojo.Games">
+        SELECT id, platform, platform_game_id AS platformGameId, gname, cover_url AS coverUrl,
+               shop_url AS shopUrl, original_price AS originalPrice, final_price AS finalPrice,
+               discount_percent AS discountPercent, top_seller_rank AS topSellerRank,
+               discount_rank AS discountRank, last_sync_time AS lastSyncTime,
+               review_count AS reviewCount, positive_rate AS positiveRate, review_tier AS reviewTier
+        FROM games
+        WHERE gname LIKE CONCAT('%', #{gname}, '%')
+        ORDER BY
+            CASE WHEN top_seller_rank = 0 THEN 1 ELSE 0 END ASC,
+            top_seller_rank ASC,
+            review_count DESC
+    </select>
+
+    <!-- 搜：按游戏名模糊查询 - 按 discount_rank 升序，rank=0 按 review_count 降序 -->
+    <select id="searchByGnameByDiscount" parameterType="java.lang.String" resultType="com.stream.pojo.Games">
+        SELECT id, platform, platform_game_id AS platformGameId, gname, cover_url AS coverUrl,
+               shop_url AS shopUrl, original_price AS originalPrice, final_price AS finalPrice,
+               discount_percent AS discountPercent, top_seller_rank AS topSellerRank,
+               discount_rank AS discountRank, last_sync_time AS lastSyncTime,
+               review_count AS reviewCount, positive_rate AS positiveRate, review_tier AS reviewTier
+        FROM games
+        WHERE gname LIKE CONCAT('%', #{gname}, '%')
+        ORDER BY
+            CASE WHEN discount_rank = 0 THEN 1 ELSE 0 END ASC,
+            discount_rank ASC,
+            review_count DESC
+    </select>
+
+    <!-- 重置所有游戏的折扣状态与排名：将折扣排名、折扣百分比置为0，现价恢复为原价 -->
+    <update id="resetAllDiscountRank">
+        UPDATE games
+        SET discount_rank = 0,
+            discount_percent = 0,
+            final_price = original_price
+    </update>
+
+    <!-- 重置所有游戏的热销榜排名：将热销榜排名置为0（表示不在榜） -->
+    <update id="resetAllTopSellerRank">
+        UPDATE games
+        SET top_seller_rank = 0
+    </update>
+
+    <!-- 删除所有 Epic 平台的游戏 -->
+    <delete id="deleteEpicGames">
+        DELETE FROM games WHERE platform = 'epic'
+    </delete>
+
+    <!-- 查：查询喜加一（限时免费/即将免费）游戏，按最后同步时间降序 -->
+    <select id="selectGiveawayGames" resultType="com.stream.pojo.Games">
+        SELECT id, platform, platform_game_id AS platformGameId, gname, cover_url AS coverUrl,
+               shop_url AS shopUrl, original_price AS originalPrice, final_price AS finalPrice,
+               discount_percent AS discountPercent, top_seller_rank AS topSellerRank,
+               discount_rank AS discountRank, last_sync_time AS lastSyncTime,
+               review_count AS reviewCount, positive_rate AS positiveRate, review_tier AS reviewTier
+        FROM games
+        WHERE (original_price > 0 AND final_price = 0)
+           OR (platform = 'epic' AND review_tier = '即将免费')
+        ORDER BY last_sync_time DESC
+    </select>
+
+</mapper>
