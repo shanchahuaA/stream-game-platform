@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+    <!--
+        连接信息不在这里读取：由 com.stream.utils.DbConfig 解析（环境变量优先，
+        其次本地 db.properties），再作为 variables 传给 SqlSessionFactoryBuilder，
+        用来填充下面 dataSource 里的 ${...} 占位符。
+    -->
+    <settings>
+        <!--    开启驼峰命名映射    -->
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+        <!--    开启日志    -->
+        <setting name="logImpl" value="STDOUT_LOGGING"/>
+
+    </settings>
+    <typeAliases>
+        <package name="com.stream.pojo"/>
+    </typeAliases>
+
+    <plugins>
+        <plugin interceptor="com.github.pagehelper.PageInterceptor"></plugin>
+    </plugins>
+
+    <!--数据库环境-->
+    <environments default="stream5.0">
+
+        <environment id="stream5.0">
+            <!--事务支持-->
+            <transactionManager type="JDBC"/>
+            <!--数据库驱动url用户名密码-->
+            <dataSource type="POOLED">
+                <property name="driver" value="${driverClassName}"/>
+                <property name="url" value="${url}"/>
+                <property name="username" value="${username}"/>
+                <property name="password" value="${password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <mappers>
+        <mapper resource="mapper/GamesMapper.xml"/>
+        <mapper resource="mapper/GameFavoritesMapper.xml"/>
+        <mapper resource="mapper/UserMapper.xml"/>
+
+
+
+    </mappers>
+
+</configuration>

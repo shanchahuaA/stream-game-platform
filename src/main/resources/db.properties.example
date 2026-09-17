@@ -1,0 +1,14 @@
+# ============================================================
+# 数据库连接模板
+#
+# 用法：把本文件复制为同目录下的 db.properties，再填入真实连接信息。
+# db.properties 已被 .gitignore 排除，不会被提交。
+#
+# 也可以完全不用这个文件，改用环境变量（优先级高于本文件）：
+#   DB_URL / DB_USER / DB_PASSWORD / DB_DRIVER
+# ============================================================
+
+driverClassName = com.mysql.cj.jdbc.Driver
+url = jdbc:mysql://localhost:3306/stream?useSSL=false&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+username = your_username
+password = your_password
