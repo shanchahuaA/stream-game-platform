@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="个人中心 — 管理你的游戏收藏夹">
+  <title>个人中心 — GameStream</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { min-height: 100vh; }
+    .page-wrapper { max-width: 1400px; margin: 0 auto; padding: var(--space-8) var(--space-6); }
+
+    /* ── Layout ──────────────────────────────── */
+    .home-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: var(--space-8);
+      align-items: start;
+    }
+
+    /* ── Profile Card ────────────────────────── */
+    .profile-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-xl);
+      padding: var(--space-8);
+      text-align: center;
+      position: sticky;
+      top: 80px;
+    }
+    .avatar-wrap {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto var(--space-5);
+      border-radius: 50%;
+      border: 3px solid transparent;
+      background:
+        linear-gradient(var(--bg-surface), var(--bg-surface)) padding-box,
+        var(--gradient-accent) border-box;
+      box-shadow: 0 0 24px var(--accent-glow);
+      overflow: hidden;
+    }
+    .avatar-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+    .profile-nickname {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: var(--space-1);
+    }
+    .profile-username {
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-bottom: var(--space-5);
+    }
+    .profile-stats {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-6);
+      padding: var(--space-4) 0;
+      border-top: 1px solid var(--border-glass);
+      border-bottom: 1px solid var(--border-glass);
+      margin-bottom: var(--space-5);
+    }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 800;
+      background: var(--gradient-accent);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: block;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .profile-actions { display: flex; flex-direction: column; gap: var(--space-3); }
+
+    /* ── Right Favorites ─────────────────────── */
+    .favorites-section h2 {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: var(--space-6);
+    }
+    .fav-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: var(--space-5);
+    }
+
+    /* ── Fav Card ────────────────────────────── */
+    .fav-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+      animation: fadeInUp 0.5s ease both;
+    }
+    .fav-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 24px var(--accent-glow);
+      border-color: rgba(124,58,237,0.3);
+    }
+    .fav-cover {
+      width: 100%;
+      aspect-ratio: 3 / 2;
+      background: var(--bg-surface);
+      overflow: hidden;
+      position: relative;
+    }
+    .fav-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+    .fav-card:hover .fav-cover img { transform: scale(1.06); }
+    .fav-cover::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 50%;
+      background: linear-gradient(to top, rgba(7,7,15,0.8), transparent);
+      pointer-events: none;
+    }
+    .fav-cover-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      background: var(--bg-surface);
+      color: var(--text-muted);
+    }
+    .fav-body { padding: var(--space-4); }
+    .fav-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: var(--space-3);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text-primary);
+    }
+    .fav-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-3);
+    }
+    .fav-price {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--danger);
+      font-variant-numeric: tabular-nums;
+    }
+    .fav-actions {
+      display: flex;
+      gap: var(--space-2);
+    }
+    .btn-unfav {
+      width: 100%;
+      padding: 8px;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: var(--radius-sm);
+      color: #f87171;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition-colors), var(--transition-transform);
+    }
+    .btn-unfav:hover { background: rgba(239,68,68,0.2); transform: translateY(-1px); }
+    .btn-unfav:focus-visible { outline: 2px solid var(--danger); outline-offset: 2px; }
+
+    /* ── Responsive ──────────────────────────── */
+    @media (max-width: 1024px) {
+      .home-layout { grid-template-columns: 1fr; }
+      .profile-card { position: static; }
+      .profile-stats { justify-content: space-around; }
+    }
+    @media (max-width: 768px) {
+      .fav-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">跳到主要内容</a>
+
+  <!-- ── Navbar ───────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="主导航">
+    <a href="index.html" class="navbar-brand">🎮 GameStream</a>
+    <div class="navbar-links">
+      <a href="games_list.html">游戏商城</a>
+      <a href="game_finder.html">AI 助手</a>
+      <button class="btn-danger" style="padding:8px 16px;font-size:13px;" onclick="handleLogout()">退出登录</button>
+    </div>
+  </nav>
+
+  <main id="main-content">
+    <div class="page-wrapper">
+      <!-- Global message -->
+      <div id="globalMsg" class="msg-box" aria-live="polite" role="alert"></div>
+
+      <div class="home-layout">
+        <!-- ── Profile Sidebar ───────────────── -->
+        <aside>
+          <div class="profile-card" aria-label="个人信息">
+            <div class="avatar-wrap">
+              <img id="userAvatar" src="assets/imgs/default_avatar.png" alt="用户头像" loading="lazy">
+            </div>
+            <div class="profile-nickname" id="userNickname">加载中…</div>
+            <div class="profile-username">@<span id="username"></span></div>
+            <div class="profile-stats">
+              <div class="stat-item">
+                <span class="stat-num" id="favCount">—</span>
+                <div class="stat-label">收藏游戏</div>
+              </div>
+            </div>
+            <div class="profile-actions">
+              <a href="games_list.html" class="btn-primary" style="justify-content:center;">🎯 浏览游戏商城</a>
+              <a href="game_finder.html" class="btn-secondary" style="justify-content:center;">🤖 AI 导购助手</a>
+              <button onclick="openEditModal()" class="btn-secondary" style="justify-content:center; width: 100%;">📝 编辑个人资料</button>
+            </div>
+          </div>
+        </aside>
+
+        <!-- ── Favorites Section ─────────────── -->
+        <section class="favorites-section" aria-labelledby="fav-heading">
+          <h2 id="fav-heading">⭐ 我的收藏游戏</h2>
+          <div class="fav-grid" id="favGrid" aria-live="polite">
+            <div class="empty-state" style="grid-column:1/-1;">
+              <span class="empty-icon">⏳</span>
+              <p>加载中…</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let currentUser = null;
+
+    window.addEventListener('DOMContentLoaded', function () {
+      const userStr = localStorage.getItem('currentUser');
+      if (!userStr) { alert('请先登录'); window.location.href = 'login.html'; return; }
+
+      currentUser = JSON.parse(userStr);
+
+      // 显示头像（使用相对路径）
+      const avatarEl = document.getElementById('userAvatar');
+      avatarEl.src = currentUser.avatar || 'assets/imgs/default_avatar.png';
+      avatarEl.onerror = function () { this.src = 'assets/imgs/default_avatar.png'; };
+      document.getElementById('userNickname').textContent = currentUser.nickname || '未设置昵称';
+      document.getElementById('username').textContent = currentUser.username;
+
+      loadFavorites();
+    });
+
+    async function loadFavorites() {
+      try {
+        const response = await fetch(`userFavorite?action=getMyFavorites&userId=${currentUser.id}`);
+        const result   = await response.json();
+        const grid     = document.getElementById('favGrid');
+
+        if (result.status === 'success' && result.data && result.data.length > 0) {
+          const data = result.data;
+          document.getElementById('favCount').textContent = data.length;
+          grid.innerHTML = '';
+
+          data.forEach((fav, i) => {
+            const game = fav.games || {};
+            const finalPrice = (game.finalPrice === 0 || game.finalPrice === null) ? '免费' : `¥${game.finalPrice}`;
+
+            const card = document.createElement('article');
+            card.className = 'fav-card';
+            card.style.animationDelay = (i * 0.05) + 's';
+            card.setAttribute('aria-label', `收藏游戏: ${game.gname || '未知游戏'}`);
+
+            // 封面
+            const coverDiv = document.createElement('div');
+            coverDiv.className = 'fav-cover';
+            if (game.coverUrl) {
+              const img = document.createElement('img');
+              img.src     = game.coverUrl;
+              img.alt     = game.gname ? `${game.gname} 封面` : '游戏封面';
+              img.loading = 'lazy';
+              coverDiv.appendChild(img);
+            } else {
+              const ph = document.createElement('div');
+              ph.className   = 'fav-cover-placeholder';
+              ph.textContent = '🎮';
+              ph.setAttribute('aria-hidden', 'true');
+              coverDiv.appendChild(ph);
+            }
+            card.appendChild(coverDiv);
+
+            // Body
+            const body = document.createElement('div');
+            body.className = 'fav-body';
+
+            const titleEl = document.createElement('div');
+            titleEl.className   = 'fav-title';
+            titleEl.textContent = game.gname || '未知游戏';
+            titleEl.title       = game.gname || '未知游戏';
+            body.appendChild(titleEl);
+
+            const metaDiv = document.createElement('div');
+            metaDiv.className = 'fav-meta';
+
+            const priceEl = document.createElement('span');
+            priceEl.className   = 'fav-price';
+            priceEl.textContent = finalPrice;
+            metaDiv.appendChild(priceEl);
+
+            // 平台徽章
+            if (game.platform) {
+              const platBadge = document.createElement('span');
+              platBadge.className   = 'badge badge-info';
+              platBadge.textContent = game.platform;
+              metaDiv.appendChild(platBadge);
+            }
+
+            body.appendChild(metaDiv);
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'fav-actions';
+            const unfavBtn = document.createElement('button');
+            unfavBtn.className   = 'btn-unfav';
+            unfavBtn.textContent = '取消收藏';
+            unfavBtn.setAttribute('aria-label', `取消收藏 ${game.gname || '游戏'}`);
+            unfavBtn.addEventListener('click', () => deleteFavorite(fav.id));
+            actionsDiv.appendChild(unfavBtn);
+            body.appendChild(actionsDiv);
+
+            card.appendChild(body);
+            grid.appendChild(card);
+          });
+        } else {
+          document.getElementById('favCount').textContent = '0';
+          grid.innerHTML = `
+            <div class="empty-state" style="grid-column:1/-1;">
+              <span class="empty-icon">⭐</span>
+              <h3>暂无收藏游戏</h3>
+              <p>去游戏商城探索并收藏你喜欢的游戏吧！</p>
+              <a href="games_list.html" class="btn-primary">浏览游戏商城</a>
+            </div>`;
+        }
+      } catch (err) {
+        console.error(err);
+        showMsg('加载收藏列表失败', false);
+      }
+    }
+
+    async function deleteFavorite(favoriteId) {
+      if (!confirm('确定要取消收藏吗？')) return;
+      try {
+        const res    = await fetch(`userFavorite?action=delete&id=${favoriteId}`);
+        const result = await res.json();
+        if (result.status === 'success') {
+          showMsg('取消收藏成功', true);
+          loadFavorites();
+        } else {
+          showMsg(result.message || '删除失败', false);
+        }
+      } catch (err) {
+        console.error(err);
+        showMsg('网络错误，请稍后重试', false);
+      }
+    }
+
+    function showMsg(text, isSuccess) {
+      const el = document.getElementById('globalMsg');
+      el.textContent = text;
+      el.className   = 'msg-box ' + (isSuccess ? 'success' : 'error');
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('currentUser');
+      window.location.href = 'index.html';
+    }
+
+    // ── 编辑个人资料逻辑 ──
+
+    // 打开编辑资料模态框
+    function openEditModal() {
+      const modal = document.getElementById('editModal');
+      modal.classList.add('is-open');
+      
+      // 加载当前用户信息
+      document.getElementById('editNickname').value = currentUser.nickname || '';
+      document.getElementById('editPassword').value = '';
+      document.getElementById('editConfirmPassword').value = '';
+      
+      // 设置头像
+      const avatarImg = document.getElementById('editAvatarImg');
+      if (currentUser.avatar && currentUser.avatar !== '') {
+        avatarImg.src = currentUser.avatar;
+      } else {
+        avatarImg.src = 'assets/imgs/default_avatar.png';
+      }
+      avatarImg.onerror = function() { this.src = 'assets/imgs/default_avatar.png'; };
+    }
+    
+    // 关闭编辑资料模态框
+    function closeEditModal() {
+      const modal = document.getElementById('editModal');
+      modal.classList.remove('is-open');
+    }
+    
+    // 预览编辑页头像
+    function previewEditAvatar(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('editAvatarImg').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+    
+    // 保存个人资料
+    async function saveProfile() {
+      const nickname = document.getElementById('editNickname').value.trim();
+      const password = document.getElementById('editPassword').value.trim();
+      const confirmPassword = document.getElementById('editConfirmPassword').value.trim();
+      const btn = document.getElementById('saveProfileBtn');
+      const btnText = document.getElementById('saveProfileBtnText');
+      
+      // 验证
+      if (!nickname) {
+        showEditMsg('昵称不能为空', false);
+        return;
+      }
+      
+      if (password !== confirmPassword) {
+        showEditMsg('两次输入的密码不一致', false);
+        return;
+      }
+      
+      try {
+        btn.disabled = true;
+        btnText.textContent = '保存中…';
+
+        // 构建 FormData
+        const formData = new FormData();
+        formData.append('id', currentUser.id);
+        formData.append('nickname', nickname);
+        if (password) {
+          formData.append('password', password);
+        }
+        
+        // 获取头像文件
+        const avatarFile = document.getElementById('editAvatarInput').files[0];
+        if (avatarFile) {
+          // 验证文件大小（最大2MB）
+          if (avatarFile.size > 2 * 1024 * 1024) {
+            showEditMsg('头像大小不能超过2MB', false);
+            btn.disabled = false;
+            btnText.textContent = '保存修改';
+            return;
+          }
+          formData.append('avatar', avatarFile);
+        }
+        
+        // 发送请求
+        const response = await fetch('user?action=updateProfile', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+          showEditMsg('更新成功', true);
+          // 更新 localStorage 中的用户信息
+          localStorage.setItem('currentUser', JSON.stringify(result.data));
+          currentUser = result.data;
+          
+          // 更新页面显示
+          document.getElementById('userNickname').textContent = currentUser.nickname || '未设置昵称';
+          const avatarEl = document.getElementById('userAvatar');
+          if (currentUser.avatar && currentUser.avatar !== '') {
+            avatarEl.src = currentUser.avatar;
+          } else {
+            avatarEl.src = 'assets/imgs/default_avatar.png';
+          }
+          
+          // 统一顶部的全局缓存
+          currentUser = result.data;
+          
+          // 延迟关闭模态框
+          setTimeout(() => {
+            closeEditModal();
+          }, 1000);
+        } else {
+          showEditMsg(result.message || '更新失败', false);
+        }
+      } catch (error) {
+        console.error(error);
+        showEditMsg('网络错误，请稍后重试', false);
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = '保存修改';
+      }
+    }
+
+    function showEditMsg(text, isSuccess) {
+      const el = document.getElementById('editMessage');
+      el.textContent = text;
+      el.className   = 'msg-box ' + (isSuccess ? 'success' : 'error');
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
+
+    // 支持 ESC 键关闭模态框
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeEditModal();
+      }
+    });
+  </script>
+
+  <!-- ── 编辑个人资料模态框 ── -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal-box glass-card" style="max-width: 420px; width: 90%;">
+      <div class="modal-header">
+        <h3>📝 编辑个人资料</h3>
+        <button onclick="closeEditModal()" class="modal-close" aria-label="关闭模态框">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- 消息提示区 -->
+        <div id="editMessage" class="msg-box" style="display: none; margin-bottom: var(--space-4);" aria-live="polite"></div>
+        
+        <!-- 头像编辑区 -->
+        <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: var(--space-5);">
+          <div class="avatar-wrap" style="width: 90px; height: 90px; margin-bottom: var(--space-3); cursor: pointer; position: relative;" onclick="document.getElementById('editAvatarInput').click()">
+            <img id="editAvatarImg" src="assets/imgs/default_avatar.png" alt="头像预览">
+            <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease; border-radius: 50%;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">
+              <span style="font-size: 11px; color: #fff;">更换头像</span>
+            </div>
+          </div>
+          <input type="file" id="editAvatarInput" accept="image/*" style="display: none;" onchange="previewEditAvatar(event)">
+          <span style="font-size: 11px; color: var(--text-muted);">仅支持图片格式，不超过 2MB</span>
+        </div>
+        
+        <!-- 表单输入 -->
+        <div class="form-group">
+          <label for="editNickname">用户昵称</label>
+          <input type="text" id="editNickname" class="form-input" placeholder="输入新的昵称" autocomplete="off">
+        </div>
+        
+        <div class="form-group">
+          <label for="editPassword">新密码</label>
+          <input type="password" id="editPassword" class="form-input" placeholder="留空则不修改密码" autocomplete="new-password">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: var(--space-6);">
+          <label for="editConfirmPassword">确认新密码</label>
+          <input type="password" id="editConfirmPassword" class="form-input" placeholder="再次输入新密码" autocomplete="new-password">
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; gap: var(--space-3); justify-content: flex-end;">
+        <button onclick="closeEditModal()" class="btn-secondary">取消</button>
+        <button id="saveProfileBtn" onclick="saveProfile()" class="btn-primary">
+          <span id="saveProfileBtnText">保存修改</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

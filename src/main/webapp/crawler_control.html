@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="爬虫数据同步控制台 — 管理员专用，触发 Steam/Epic 游戏数据爬取">
+  <title>爬虫控制台 — GameStream</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { min-height: 100vh; }
+    .page-wrapper { max-width: 1100px; margin: 0 auto; padding: var(--space-8) var(--space-6); }
+    .page-header { margin-bottom: var(--space-8); }
+    .page-header h1 { font-size: 28px; font-weight: 800; margin-bottom: var(--space-2); }
+    .page-header p { color: var(--text-secondary); font-size: 14px; }
+
+    /* ── Crawlers Grid ────────────────────────── */
+    .crawlers-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-6);
+      margin-bottom: var(--space-8);
+    }
+    .crawler-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-xl);
+      padding: var(--space-8);
+      text-align: center;
+      transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), box-shadow 0.35s ease, border-color 0.35s ease;
+    }
+    .crawler-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 24px var(--accent-glow);
+      border-color: rgba(124,58,237,0.3);
+    }
+    .crawler-card.syncing {
+      border-color: rgba(124,58,237,0.5);
+      animation: pulse 2s ease infinite;
+    }
+    .crawler-icon {
+      font-size: 52px;
+      display: block;
+      margin-bottom: var(--space-4);
+    }
+    .crawler-card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: var(--space-3);
+    }
+    .crawler-card p {
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.7;
+      margin-bottom: var(--space-6);
+      min-height: 54px;
+    }
+    .crawler-btn {
+      width: 100%;
+      padding: 12px 20px;
+      background: var(--gradient-accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      transition: var(--transition-transform), var(--transition-shadow);
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+    .crawler-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px var(--accent-glow);
+    }
+    .crawler-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .crawler-btn:focus-visible { outline: 2px solid var(--accent-secondary); outline-offset: 2px; }
+
+    /* ── Log Box ─────────────────────────────── */
+    .log-section h2 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: var(--space-4);
+    }
+    .log-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-xl);
+      padding: var(--space-5) var(--space-6);
+      height: 240px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+    .log-entry {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      font-size: 13px;
+      line-height: 1.6;
+      animation: fadeInUp 0.3s ease;
+    }
+    .log-time {
+      font-variant-numeric: tabular-nums;
+      color: var(--text-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+    .log-text { flex: 1; }
+    .log-text.success { color: #4ade80; }
+    .log-text.error   { color: #f87171; }
+    .log-text.info    { color: var(--accent-secondary); }
+    .log-text.pending { color: var(--warning); }
+    .log-placeholder {
+      color: var(--text-muted);
+      font-size: 13px;
+      text-align: center;
+      margin: auto;
+    }
+
+    /* ── Responsive ──────────────────────────── */
+    @media (max-width: 768px) {
+      .crawlers-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">跳到主要内容</a>
+
+  <!-- ── Navbar ───────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="主导航">
+    <a href="index.html" class="navbar-brand">🎮 GameStream</a>
+    <div class="navbar-links">
+      <a href="index.html">首页</a>
+      <a href="admin_panel.html">管理面板</a>
+      <button class="btn-danger" style="padding:8px 16px;font-size:13px;" onclick="handleLogout()">退出登录</button>
+    </div>
+  </nav>
+
+  <main id="main-content">
+    <div class="page-wrapper">
+      <div class="page-header">
+        <h1>🚀 爬虫数据同步控制台</h1>
+        <p>管理员专用工具，手动触发游戏数据爬取与同步</p>
+      </div>
+
+      <!-- ── Crawlers Grid ──────────────────── -->
+      <div class="crawlers-grid" role="list" aria-label="爬虫任务列表">
+        <!-- Steam 折扣 -->
+        <article class="crawler-card" id="discountCard" role="listitem" aria-label="Steam 折扣榜同步">
+          <span class="crawler-icon" aria-hidden="true">💸</span>
+          <h3>Steam 折扣榜</h3>
+          <p>同步 Steam 全平台打折游戏数据，包含折扣幅度、原价、现价，上限 10000 条</p>
+          <button class="crawler-btn" id="discountBtn" onclick="triggerCrawler('discount')">
+            <span id="discountBtnContent">⚡ 触发同步</span>
+          </button>
+        </article>
+
+        <!-- Steam 热销 -->
+        <article class="crawler-card" id="topSellerCard" role="listitem" aria-label="Steam 热销榜同步">
+          <span class="crawler-icon" aria-hidden="true">🔥</span>
+          <h3>Steam 热销榜</h3>
+          <p>同步 Steam 实时热销排行榜游戏，展示玩家购买热度最高的游戏，上限 100 条</p>
+          <button class="crawler-btn" id="topSellerBtn" onclick="triggerCrawler('topseller')">
+            <span id="topSellerBtnContent">⚡ 触发同步</span>
+          </button>
+        </article>
+
+        <!-- Epic 免费 -->
+        <article class="crawler-card" id="epicCard" role="listitem" aria-label="Epic 免费游戏同步">
+          <span class="crawler-icon" aria-hidden="true">🎁</span>
+          <h3>Epic 免费游戏</h3>
+          <p>同步 Epic 平台当前正在免费赠送的游戏，及时掌握每周免费好礼</p>
+          <button class="crawler-btn" id="epicBtn" onclick="triggerCrawler('epic')">
+            <span id="epicBtnContent">⚡ 触发同步</span>
+          </button>
+        </article>
+      </div>
+
+      <!-- ── Log Section ────────────────────── -->
+      <div class="log-section">
+        <h2>📝 同步日志</h2>
+        <div class="log-box" id="logBox" role="log" aria-live="polite" aria-label="同步状态日志">
+          <p class="log-placeholder">系统就绪，点击上方按钮开始同步数据</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const crawlerConfig = {
+      discount:  { url: 'crawler?action=startSteamDiscount',    name: 'Steam 折扣同步', btnId: 'discountBtn',  cardId: 'discountCard',  contentId: 'discountBtnContent'  },
+      topseller: { url: 'crawler?action=startSteamTopSeller',   name: 'Steam 热销同步', btnId: 'topSellerBtn', cardId: 'topSellerCard', contentId: 'topSellerBtnContent' },
+      epic:      { url: 'crawler?action=startEpicFreeGames',    name: 'Epic 免费同步',  btnId: 'epicBtn',      cardId: 'epicCard',      contentId: 'epicBtnContent'      }
+    };
+
+    function allBtns() {
+      return Object.values(crawlerConfig).map(c => document.getElementById(c.btnId));
+    }
+
+    function addLog(type, text) {
+      const box = document.getElementById('logBox');
+      // 移除 placeholder
+      const ph = box.querySelector('.log-placeholder');
+      if (ph) ph.remove();
+
+      const now   = new Date().toLocaleTimeString('zh-CN');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+
+      const timeEl = document.createElement('span');
+      timeEl.className   = 'log-time';
+      timeEl.textContent = `[${now}]`;
+      entry.appendChild(timeEl);
+
+      const textEl = document.createElement('span');
+      textEl.className   = `log-text ${type}`;
+      textEl.textContent = text;
+      entry.appendChild(textEl);
+
+      box.appendChild(entry);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function setBtnSyncing(cfg, syncing) {
+      const btn  = document.getElementById(cfg.btnId);
+      const span = document.getElementById(cfg.contentId);
+      const card = document.getElementById(cfg.cardId);
+      btn.disabled = syncing;
+      if (syncing) {
+        span.innerHTML = `<span class="spinner" style="width:16px;height:16px;border-width:2px;"></span>&nbsp;同步中…`;
+        card.classList.add('syncing');
+      } else {
+        span.textContent = '⚡ 触发同步';
+        card.classList.remove('syncing');
+      }
+    }
+
+    async function triggerCrawler(type) {
+      const cfg = crawlerConfig[type];
+      // 禁用所有按钮防止并发
+      allBtns().forEach(btn => btn.disabled = true);
+      setBtnSyncing(cfg, true);
+      addLog('pending', `[${cfg.name}] 正在同步中，请耐心等候…（可能需要数十秒）`);
+
+      try {
+        const res = await fetch(cfg.url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const result = await res.json();
+        if (result.code === 200) {
+          addLog('success', `[${cfg.name}] 同步成功！本次写入 ${result.data} 条记录。`);
+        } else {
+          addLog('error', `[${cfg.name}] 失败：${result.message}`);
+        }
+      } catch (err) {
+        addLog('error', `[${cfg.name}] 错误：网络连接失败，请检查后端与 Python 服务。`);
+        console.error(err);
+      } finally {
+        setBtnSyncing(cfg, false);
+        allBtns().forEach(btn => btn.disabled = false);
+      }
+    }
+
+    // ── 页面初始化（权限检查 + 自检 在同一 DOMContentLoaded 中）──
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. 权限检查
+      const userStr = localStorage.getItem('currentUser');
+      if (!userStr) { alert('请先登录'); window.location.href = 'login.html'; return; }
+      const currentUser = JSON.parse(userStr);
+      if (currentUser.username !== 'admin') {
+        alert('无权访问爬虫控制台，仅管理员可使用此功能');
+        window.location.href = 'index.html';
+        return;
+      }
+
+      // 2. 权限通过后再触发每周自检（避免竞争条件）
+      fetch('crawler?action=checkAndTriggerWeekly')
+        .then(r => r.json())
+        .then(res => {
+          if (res.code === 200) {
+            console.log('[Weekly Auto Check] 检测完成:', res.data);
+          } else {
+            console.warn('[Weekly Auto Check] 失败:', res.message);
+          }
+        })
+        .catch(err => console.error('[Weekly Auto Check] 错误:', err));
+    });
+
+    function handleLogout() {
+      localStorage.removeItem('currentUser');
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>

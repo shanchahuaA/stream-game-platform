@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI 导购助手 — 用自然语言问游戏价格、折扣、榜单和口碑，答案来自 Steam 官方数据、本站数据库与真实搜索">
+  <title>AI 导购助手 — GameStream</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── Main Layout ──────────────────────────── */
+    .page-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Left Sidebar ────────────────────────── */
+    .sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.03);
+      border-right: 1px solid var(--border-glass);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6);
+      padding: var(--space-6);
+      overflow-y: auto;
+    }
+    .sidebar-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+    }
+    .sidebar-card h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: var(--space-4);
+    }
+    .service-status-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .tags-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+    .quick-tag {
+      padding: 5px 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition-colors), var(--transition-transform);
+    }
+    .quick-tag:hover {
+      color: var(--text-primary);
+      background: rgba(124,58,237,0.15);
+      border-color: rgba(124,58,237,0.3);
+      transform: translateY(-1px);
+    }
+    .quick-tag:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+    .sidebar-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    /* ── Chat Area ───────────────────────────── */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Service offline banner */
+    .offline-guide {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      flex: 1;
+      padding: var(--space-16);
+      gap: var(--space-5);
+    }
+    .offline-guide.visible { display: flex; }
+    .offline-guide .offline-icon { font-size: 72px; }
+    .offline-guide h2 { font-size: 24px; font-weight: 700; }
+    .offline-guide p { color: var(--text-secondary); max-width: 400px; line-height: 1.7; font-size: 14px; }
+    .offline-guide code {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      color: var(--accent-secondary);
+      font-family: monospace;
+    }
+
+    /* Chat messages */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-6);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      scroll-behavior: smooth;
+    }
+    .chat-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      text-align: center;
+      color: var(--text-muted);
+      gap: var(--space-3);
+      padding: var(--space-16);
+    }
+    .chat-placeholder .ph-icon { font-size: 56px; opacity: 0.5; }
+    .chat-placeholder p { font-size: 15px; }
+
+    /* Message bubbles */
+    .msg-row {
+      display: flex;
+      animation: fadeInUp 0.3s ease;
+    }
+    .msg-row.user { justify-content: flex-end; }
+    .msg-row.ai   { justify-content: flex-start; }
+    .bubble {
+      max-width: 72%;
+      padding: 12px 18px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.6;
+      /* 助手现在会分段回答，气泡按纯文本渲染，换行符要真的换行 */
+      white-space: pre-wrap;
+    }
+    .bubble.user-bubble {
+      background: var(--gradient-accent);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+    .bubble.ai-bubble {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      color: var(--text-primary);
+      border-bottom-left-radius: 4px;
+    }
+    .bubble.ai-success {
+      background: rgba(34,197,94,0.1);
+      border-color: rgba(34,197,94,0.25);
+    }
+    .bubble.ai-error {
+      background: rgba(239,68,68,0.1);
+      border-color: rgba(239,68,68,0.25);
+      color: #fca5a5;
+    }
+
+    /* Game link card */
+    .game-link-card {
+      margin-top: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      background: rgba(124,58,237,0.12);
+      border: 1px solid rgba(124,58,237,0.25);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    .game-link-card .game-icon { font-size: 22px; flex-shrink: 0; }
+    .game-link-card .game-name { font-weight: 700; font-size: 14px; flex: 1; }
+    .game-link-card a {
+      padding: 6px 14px;
+      background: var(--gradient-accent);
+      color: #fff;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      transition: var(--transition-transform), var(--transition-shadow);
+      flex-shrink: 0;
+    }
+    .game-link-card a:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
+    .game-link-card a:focus-visible { outline: 2px solid var(--accent-secondary); outline-offset: 2px; }
+
+    /* Typing indicator */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 14px 18px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+    }
+    .typing-dot {
+      width: 8px; height: 8px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: typingBounce 1.4s ease infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30%           { transform: translateY(-6px); }
+    }
+
+    /* ── Input Bar ───────────────────────────── */
+    .input-bar {
+      border-top: 1px solid var(--border-glass);
+      padding: var(--space-4) var(--space-6);
+      display: flex;
+      gap: var(--space-3);
+      align-items: center;
+      background: rgba(7,7,15,0.7);
+    }
+    .input-bar input {
+      flex: 1;
+      padding: 12px 18px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-full);
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .input-bar input::placeholder { color: var(--text-muted); }
+    .input-bar input:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(124,58,237,0.2);
+    }
+    .input-bar input:disabled { opacity: 0.5; cursor: not-allowed; }
+    .send-btn {
+      width: 44px; height: 44px;
+      background: var(--gradient-accent);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px var(--accent-glow);
+      transition: var(--transition-transform), var(--transition-shadow);
+    }
+    .send-btn:hover:not(:disabled) { transform: scale(1.1); box-shadow: 0 6px 20px var(--accent-glow); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .send-btn:focus-visible { outline: 2px solid var(--accent-secondary); outline-offset: 2px; }
+
+    /* ── Responsive ──────────────────────────── */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .bubble { max-width: 88%; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">跳到主要内容</a>
+
+  <!-- ── Navbar ───────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="主导航">
+    <a href="index.html" class="navbar-brand">🎮 GameStream</a>
+    <div class="navbar-links" id="navLinks">
+      <a href="index.html">首页</a>
+      <a href="games_list.html">游戏商城</a>
+    </div>
+  </nav>
+
+  <!-- ── Main ─────────────────────────────────── -->
+  <div class="page-body" id="main-content">
+    <!-- Left Sidebar -->
+    <aside class="sidebar" aria-label="AI 助手状态与快捷功能">
+      <div class="sidebar-card">
+        <h3>服务状态</h3>
+        <div class="service-status-row">
+          <span class="status-dot checking" id="statusDot"></span>
+          <span id="statusText">正在检测服务…</span>
+        </div>
+      </div>
+      <div class="sidebar-card">
+        <h3>功能说明</h3>
+        <p class="sidebar-desc">用自然语言问游戏。报一个游戏名，它去 Steam 官方查现价、折扣与媒体评分；问「最近有什么好价」，它读本站商城里的折扣 / 热销 / 喜加一；问「口碑怎么样」，它真去搜一遍玩家评价。给出结论的链接都是查到的，不是编的。</p>
+      </div>
+      <div class="sidebar-card">
+        <h3>快捷词</h3>
+        <div class="tags-list">
+          <button class="quick-tag" onclick="quickSearch('黑神话悟空现在多少钱？')">黑神话悟空多少钱</button>
+          <button class="quick-tag" onclick="quickSearch('艾尔登法环最近打折吗？')">艾尔登法环打折吗</button>
+          <button class="quick-tag" onclick="quickSearch('最近有什么好价？')">最近有什么好价</button>
+          <button class="quick-tag" onclick="quickSearch('最近大家在买什么？')">大家在买什么</button>
+          <button class="quick-tag" onclick="quickSearch('有什么免费的游戏可以领？')">有什么免费的</button>
+          <button class="quick-tag" onclick="quickSearch('赛博朋克2077 的口碑怎么样？')">赛博朋克口碑</button>
+          <button class="quick-tag" onclick="quickSearch('只狼值得买吗？')">只狼值得买吗</button>
+          <button class="quick-tag" onclick="quickSearch('帮我推荐几款口碑好的恐怖游戏')">推荐恐怖游戏</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Chat Area -->
+    <section class="chat-area" aria-label="AI 聊天区">
+      <!-- Offline guide (hidden by default) -->
+      <div class="offline-guide" id="offlineGuide" role="alert" aria-live="polite">
+        <div class="offline-icon" aria-hidden="true">🔌</div>
+        <h2>AI 服务暂时离线</h2>
+        <p>Python 微服务未启动，请先在本地启动它，然后刷新页面重试：</p>
+        <code>start_game_helper.bat（或进入 game-finder 目录执行 python main.py，端口 8090）</code>
+        <button class="btn-primary" onclick="checkServiceHealth()" style="margin-top:8px;">重新检测</button>
+      </div>
+
+      <!-- Messages container -->
+      <div class="chat-messages" id="chatMessages" aria-live="polite" aria-label="对话内容">
+        <div class="chat-placeholder" id="chatPlaceholder">
+          <span class="ph-icon" aria-hidden="true">🤖</span>
+          <p>服务就绪后，在下方提问：问价格、问折扣榜单、问口碑都可以</p>
+        </div>
+      </div>
+
+      <!-- Input bar -->
+      <div class="input-bar">
+        <input type="text" id="userInput"
+               placeholder="问价格、问口碑、问最近什么值得买，例如：艾尔登法环现在多少钱？"
+               aria-label="游戏导购提问输入框"
+               disabled>
+        <button class="send-btn" id="sendBtn" onclick="findGame()" disabled aria-label="发送消息">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" aria-hidden="true">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let serviceOnline = false;
+
+    window.addEventListener('DOMContentLoaded', function () {
+      // 1. 登录检查
+      const userStr = localStorage.getItem('currentUser');
+      if (!userStr) {
+        alert('请先登录才能使用 AI 导购助手');
+        window.location.href = 'login.html';
+        return;
+      }
+      currentUser = JSON.parse(userStr);
+
+      // 2. 更新导航栏
+      const navLinks = document.getElementById('navLinks');
+      if (currentUser.username === 'admin') {
+        navLinks.innerHTML = `
+          <a href="index.html">首页</a>
+          <a href="admin_panel.html">用户管理</a>
+          <a href="games_list.html">游戏商城</a>
+          <a href="crawler_control.html">爬虫控制台</a>
+          <button class="btn-danger" style="padding:8px 16px;font-size:13px;" onclick="handleLogout()">退出登录</button>`;
+      } else {
+        navLinks.innerHTML = `
+          <a href="index.html">首页</a>
+          <a href="user_home.html">个人中心</a>
+          <a href="games_list.html">游戏商城</a>
+          <button class="btn-danger" style="padding:8px 16px;font-size:13px;" onclick="handleLogout()">退出登录</button>`;
+      }
+
+      // 3. 检测服务
+      checkServiceHealth();
+
+      // 4. Enter 键发送
+      document.getElementById('userInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') findGame();
+      });
+    });
+
+    async function checkServiceHealth() {
+      const dot = document.getElementById('statusDot');
+      const txt = document.getElementById('statusText');
+      dot.className = 'status-dot checking';
+      txt.textContent = '正在检测服务…';
+      try {
+        const res = await fetch('gameFinder?action=healthCheck');
+        const result = await res.json();
+        if (result.code === 200) {
+          serviceOnline = true;
+          dot.className = 'status-dot online';
+          txt.textContent = 'Python 微服务在线 ✅';
+          enableInput();
+          document.getElementById('offlineGuide').classList.remove('visible');
+        } else {
+          setOffline('微服务响应异常');
+        }
+      } catch {
+        setOffline('无法连接 Java 服务');
+      }
+    }
+
+    function setOffline(msg) {
+      serviceOnline = false;
+      document.getElementById('statusDot').className = 'status-dot offline';
+      document.getElementById('statusText').textContent = msg + ' ❌';
+      disableInput();
+      document.getElementById('chatMessages').style.display = 'none';
+      document.getElementById('offlineGuide').classList.add('visible');
+    }
+
+    function enableInput() {
+      const inp = document.getElementById('userInput');
+      const btn = document.getElementById('sendBtn');
+      inp.disabled = false;
+      btn.disabled = false;
+      inp.focus();
+    }
+
+    function disableInput() {
+      document.getElementById('userInput').disabled = true;
+      document.getElementById('sendBtn').disabled = true;
+    }
+
+    function quickSearch(text) {
+      const inp = document.getElementById('userInput');
+      inp.value = text;
+      findGame();
+    }
+
+    async function findGame() {
+      const inp = document.getElementById('userInput');
+      const query = inp.value.trim();
+      if (!query) return;
+      if (!serviceOnline) { addAiBubble('error', '微服务未启动，请先启动后再试。'); return; }
+
+      // 隐藏 placeholder
+      const ph = document.getElementById('chatPlaceholder');
+      if (ph) ph.style.display = 'none';
+
+      // 禁用输入
+      inp.disabled = true;
+      document.getElementById('sendBtn').disabled = true;
+
+      // 用户气泡
+      addUserBubble(query);
+      inp.value = '';
+
+      // 打字指示器
+      const thinkId = addTypingIndicator();
+
+      try {
+        const res = await fetch('gameFinder?action=findGame&userQuery=' + encodeURIComponent(query));
+        const result = await res.json();
+        removeMessage(thinkId);
+
+        if (result.code === 200 && result.data) {
+          const data = result.data;
+          if (data.success) {
+            addAiBubble('success', data.message || '找到游戏啦！', {
+              gameName: data.game_name || query,
+              gameUrl: data.game_url
+            });
+          } else {
+            addAiBubble('normal', data.message || '抱歉，没有找到这款游戏，请换个描述试试。');
+          }
+        } else {
+          addAiBubble('error', result.message || '服务调用失败，请稍后重试。');
+        }
+      } catch {
+        removeMessage(thinkId);
+        addAiBubble('error', '网络请求失败，请检查服务是否正常运行。');
+      }
+
+      inp.disabled = false;
+      document.getElementById('sendBtn').disabled = false;
+      inp.focus();
+    }
+
+    function addUserBubble(text) {
+      const container = document.getElementById('chatMessages');
+      const row = document.createElement('div');
+      row.className = 'msg-row user';
+      const bub = document.createElement('div');
+      bub.className = 'bubble user-bubble';
+      bub.textContent = text;
+      row.appendChild(bub);
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function addAiBubble(type, text, gameData) {
+      const container = document.getElementById('chatMessages');
+      const row = document.createElement('div');
+      row.className = 'msg-row ai';
+      const bub = document.createElement('div');
+      bub.className = 'bubble ai-bubble' + (type === 'success' ? ' ai-success' : type === 'error' ? ' ai-error' : '');
+
+      const p = document.createElement('p');
+      p.textContent = text;
+      bub.appendChild(p);
+
+      if (type === 'success' && gameData && gameData.gameUrl) {
+        const card = document.createElement('div');
+        card.className = 'game-link-card';
+        const iconEl = document.createElement('span');
+        iconEl.className = 'game-icon';
+        iconEl.textContent = '🎮';
+        iconEl.setAttribute('aria-hidden', 'true');
+        const nameEl = document.createElement('span');
+        nameEl.className = 'game-name';
+        nameEl.textContent = gameData.gameName;
+        const linkEl = document.createElement('a');
+        linkEl.href = gameData.gameUrl;
+        linkEl.target = '_blank';
+        linkEl.rel = 'noopener noreferrer';
+        linkEl.textContent = '访问游戏页面';
+        card.appendChild(iconEl);
+        card.appendChild(nameEl);
+        card.appendChild(linkEl);
+        bub.appendChild(card);
+      }
+
+      row.appendChild(bub);
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function addTypingIndicator() {
+      const container = document.getElementById('chatMessages');
+      const row = document.createElement('div');
+      const id = 'typing_' + Date.now();
+      row.id = id;
+      row.className = 'msg-row ai';
+      const ind = document.createElement('div');
+      ind.className = 'typing-indicator';
+      [1,2,3].forEach(() => {
+        const dot = document.createElement('div');
+        dot.className = 'typing-dot';
+        ind.appendChild(dot);
+      });
+      row.appendChild(ind);
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+      return id;
+    }
+
+    function removeMessage(id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('currentUser');
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>
