@@ -1,0 +1,7 @@
+fastapi>=0.100.0
+uvicorn>=0.22.0
+# 0.26 起 httpx 才用 proxy= 这个关键字参数（0.24/0.25 叫 proxies=），
+# 而 search_reviews 要按 .env 里的 PROXY 走代理，所以下限不能低于 0.26
+httpx>=0.26.0
+openai>=1.0.0
+python-dotenv>=1.0.0
