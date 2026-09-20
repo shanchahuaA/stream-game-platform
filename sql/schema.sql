@@ -13,6 +13,11 @@
 -- user_favorites 的 UNIQUE(user_id, game_id) 保证同一用户不会重复收藏同一游戏。
 -- ============================================================
 
+-- 本文件是 UTF-8，而中文 Windows 上 mysql 客户端默认按 gbk 解码它，
+-- 里面的中文（表注释、列注释）会存成乱码，而且不报错，
+-- 所以在任何含中文的语句之前先声明字符集。
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS `stream`
     DEFAULT CHARACTER SET utf8mb4
     DEFAULT COLLATE utf8mb4_general_ci;

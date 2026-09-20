@@ -118,11 +118,13 @@ flowchart LR
 ### 1. 建库
 
 ```bash
-mysql -uroot -p < sql/schema.sql
-mysql -uroot -p < sql/seed.sql
+mysql -uroot -p --default-character-set=utf8mb4 < sql/schema.sql
+mysql -uroot -p --default-character-set=utf8mb4 < sql/seed.sql
 ```
 
 `schema.sql` 建出 `stream` 库和三张表；`seed.sql` 灌一批虚构演示数据，可以重复执行，不会覆盖库里已有的行。
+
+**`--default-character-set=utf8mb4` 不要省。** 中文 Windows 上，`mysql` 客户端默认把这条连接的 `character_set_client` 设成控制台代码页 `gbk`（`SHOW VARIABLES LIKE 'character_set_client'` 一看便知），服务端就按 GBK 去解释脚本里的字节，而这两份脚本是 UTF-8 文件：中文被按 2 字节一对错位解读，**灌进去的中文全是乱码，而且不报错**——`星海远征` 会存成 `鏄熸捣杩滃緛`，要打开页面才发现。两份脚本的文件头各自写了 `SET NAMES utf8mb4;`，所以绕过 README 直接 `mysql < sql/seed.sql` 也不会踩；命令行上再带一次参数是让它一连接就摆正，两条路都不依赖默认值。
 
 ### 2. 配置数据库
 
