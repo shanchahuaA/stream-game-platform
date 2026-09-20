@@ -5,9 +5,10 @@ Reports every file that a commit would contain and that looks like it carries a
 credential or personal data, so a push can be stopped before anything becomes
 public.
 
-The same file is kept byte-for-byte identical in three repositories --
-stream-game-platform, defense-system and shanchahuaA.github.io -- and in the
-development tree it is edited in; a change to any copy is a change to all.
+Keep this file byte-for-byte identical in its copies in the
+stream-game-platform, defense-system and shanchahuaA.github.io repositories,
+and in the development tree they are taken from: a change here is a change to
+all of them.
 
     python privacy_scan.py            # scan the current directory
     python privacy_scan.py <dir>      # scan somewhere else
