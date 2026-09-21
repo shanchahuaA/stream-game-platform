@@ -18,15 +18,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * AI 游戏助手 Servlet —— 代理转发请求到 Python FastAPI 微服务
+ * AI 导购助手 Servlet —— 代理转发请求到 Python FastAPI 微服务
  *
- * 数据流：前端 → GameFinderServlet → Python FastAPI (game-finder/main.py) → 返回游戏链接
+ * 数据流：前端 → GameFinderServlet → Python FastAPI (game-finder/main.py) → 按提问意图分派到
+ *         三个平级工具（Steam 官方商店接口 / 本应用的 /games 接口 / DuckDuckGo），返回导购结果
+ *
+ * 微服务不做盗版：明确索要盗版时它会礼貌拒绝，并引向正版好价。
  *
  * 接口说明（供 Java 开发者参考）：
- *   1. findGame: 接收用户自然语言查询，转发到 Python 微服务获取游戏链接
- *      调用方式: GET /gameFinder?action=findGame&userQuery=我是学生我想玩黑神话悟空
+ *   1. findGame: 接收用户自然语言提问，转发到 Python 微服务作答
+ *      调用方式: GET /gameFinder?action=findGame&userQuery=黑神话悟空现在多少钱
  *      返回格式: Result.success(data) 或 Result.error(message)
  *      data 内容: {success: boolean, game_name: String, game_url: String, message: String}
+ *                （game_url 为 Steam 商店页直达链接；价格 / 折扣 / 口碑写在 message 里）
  *
  *   2. healthCheck: 检测 Python 微服务是否在线
  *      调用方式: GET /gameFinder?action=healthCheck
@@ -35,7 +39,7 @@ import java.util.Map;
 @WebServlet("/gameFinder")
 public class GameFinderServlet extends BaseServlet {
 
-    /** Python FastAPI 微服务地址 —— 游戏搜索接口（端口取自 app.properties，Java 与 Python 两侧共用一个值） */
+    /** Python FastAPI 微服务地址 —— 导购问答接口（端口取自 app.properties，Java 与 Python 两侧共用一个值） */
     private static final String PYTHON_SERVICE_URL = AppConfig.gameFinderBaseUrl() + "/api/v1/find-game";
     /** Python FastAPI 微服务地址 —— 健康检查接口 */
     private static final String PYTHON_HEALTH_URL = AppConfig.gameFinderBaseUrl() + "/health";
@@ -43,7 +47,7 @@ public class GameFinderServlet extends BaseServlet {
     private static final int TIMEOUT_MS = 35000;
 
     /**
-     * 核心接口：查找游戏直达链接
+     * 核心接口：回答用户的导购提问
      *
      * 前端调用: fetch('gameFinder?action=findGame&userQuery=' + encodeURIComponent(query))
      *
